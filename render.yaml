@@ -1,42 +1,135 @@
 services:
-  # 1. خدمة قاعدة البيانات PostgreSQL لتخزين جلسات الواتساب وحالة المتجر
-  - type: pserv
-    name: evolution-db
-    env: postgres
-    plan: free # يمكنك تغييرها إلى خطة مدفوعة لاحقاً للإنتاج الفعلي
-    region: frankfurt # اختر المنطقة الأقرب لك أو المتاحة
-    databaseName: evolution_db
-    databaseUser: evolution_user
+  # ==========================================
+  # 1. Valkey / Redis
+  # ==========================================
+  - type: keyvalue
+    name: evolution-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []
 
-  # 2. خدمة Evolution API الرئيسية
+  # ==========================================
+  # 2. Evolution API
+  # ==========================================
   - type: web
     name: evolution-api
-    env: docker
-    plan: free # أو خطة مدفوعة لضمان عدم نوم السيرفر واستمرار اتصال الواتساب 24/7
+    runtime: docker
+    plan: free
     region: frankfurt
+
     dockerfilePath: ./Dockerfile
+
+    healthCheckPath: /
+
     envVars:
+      # ----------------------------------------
+      # Server
+      # ----------------------------------------
+      - key: PORT
+        value: "8080"
+
       - key: SERVER_PORT
-        value: 8080
+        value: "8080"
+
+      - key: SERVER_TYPE
+        value: "http"
+
       - key: SERVER_URL
         fromService:
           type: web
           name: evolution-api
           property: url
+
+      # ----------------------------------------
+      # Authentication
+      # ----------------------------------------
       - key: AUTHENTICATION_API_KEY
-        generateValue: true # يقوم Render بتوليد مفتاح حماية سري تلقائياً، أو يمكنك كتابة مفتاحك اليدوي هنا
+        generateValue: true
+
+      - key: AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES
+        value: "true"
+
+      # ----------------------------------------
+      # PostgreSQL
+      # ----------------------------------------
       - key: DATABASE_PROVIDER
         value: postgresql
+
       - key: DATABASE_CONNECTION_URI
-        fromService:
-          type: pserv
+        fromDatabase:
           name: evolution-db
           property: connectionString
+
       - key: DATABASE_SAVE_DATA_INSTANCE
         value: "true"
+
       - key: DATABASE_SAVE_DATA_CHATS
         value: "true"
+
       - key: DATABASE_SAVE_DATA_MESSAGES
         value: "true"
+
       - key: DATABASE_SAVE_DATA_CONTACTS
         value: "true"
+
+      - key: DATABASE_SAVE_DATA_LABELS
+        value: "true"
+
+      - key: DATABASE_SAVE_DATA_HISTORIC
+        value: "true"
+
+      # ----------------------------------------
+      # Redis / Valkey
+      # ----------------------------------------
+      - key: CACHE_REDIS_ENABLED
+        value: "true"
+
+      - key: CACHE_REDIS_URI
+        fromService:
+          type: keyvalue
+          name: evolution-redis
+          property: connectionString
+
+      - key: CACHE_REDIS_PREFIX_KEY
+        value: evolution-cache
+
+      - key: CACHE_REDIS_TTL
+        value: "604800"
+
+      - key: CACHE_REDIS_SAVE_INSTANCES
+        value: "true"
+
+      # ----------------------------------------
+      # Local cache fallback
+      # ----------------------------------------
+      - key: CACHE_LOCAL_ENABLED
+        value: "true"
+
+      - key: CACHE_LOCAL_TTL
+        value: "86400"
+
+      # ----------------------------------------
+      # WhatsApp / Instance
+      # ----------------------------------------
+      - key: DEL_INSTANCE
+        value: "false"
+
+      - key: DEL_TEMP_INSTANCES
+        value: "false"
+
+      # ----------------------------------------
+      # Language
+      # ----------------------------------------
+      - key: LANGUAGE
+        value: en
+
+
+# ==========================================
+# PostgreSQL
+# ==========================================
+databases:
+  - name: evolution-db
+    plan: free
+    region: frankfurt
+    databaseName: evolution_db
+    user: evolution_user
