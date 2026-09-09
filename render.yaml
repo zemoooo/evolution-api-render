@@ -1,0 +1,42 @@
+services:
+  # 1. خدمة قاعدة البيانات PostgreSQL لتخزين جلسات الواتساب وحالة المتجر
+  - type: pserv
+    name: evolution-db
+    env: postgres
+    plan: free # يمكنك تغييرها إلى خطة مدفوعة لاحقاً للإنتاج الفعلي
+    region: frankfurt # اختر المنطقة الأقرب لك أو المتاحة
+    databaseName: evolution_db
+    databaseUser: evolution_user
+
+  # 2. خدمة Evolution API الرئيسية
+  - type: web
+    name: evolution-api
+    env: docker
+    plan: free # أو خطة مدفوعة لضمان عدم نوم السيرفر واستمرار اتصال الواتساب 24/7
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8080
+      - key: SERVER_URL
+        fromService:
+          type: web
+          name: evolution-api
+          property: url
+      - key: AUTHENTICATION_API_KEY
+        generateValue: true # يقوم Render بتوليد مفتاح حماية سري تلقائياً، أو يمكنك كتابة مفتاحك اليدوي هنا
+      - key: DATABASE_PROVIDER
+        value: postgresql
+      - key: DATABASE_CONNECTION_URI
+        fromService:
+          type: pserv
+          name: evolution-db
+          property: connectionString
+      - key: DATABASE_SAVE_DATA_INSTANCE
+        value: "true"
+      - key: DATABASE_SAVE_DATA_CHATS
+        value: "true"
+      - key: DATABASE_SAVE_DATA_MESSAGES
+        value: "true"
+      - key: DATABASE_SAVE_DATA_CONTACTS
+        value: "true"
