@@ -7,6 +7,7 @@ services:
     plan: free
     region: frankfurt
     ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
 
   # ==========================================
   # 2. Evolution API
@@ -16,113 +17,83 @@ services:
     runtime: docker
     plan: free
     region: frankfurt
-
     dockerfilePath: ./Dockerfile
-
     healthCheckPath: /
 
     envVars:
-      # ----------------------------------------
       # Server
-      # ----------------------------------------
       - key: PORT
         value: "8080"
-
       - key: SERVER_PORT
         value: "8080"
-
       - key: SERVER_TYPE
-        value: "http"
-
+        value: http
       - key: SERVER_URL
         fromService:
           type: web
           name: evolution-api
           property: url
 
-      # ----------------------------------------
       # Authentication
-      # ----------------------------------------
       - key: AUTHENTICATION_API_KEY
         generateValue: true
-
       - key: AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES
         value: "true"
 
-      # ----------------------------------------
       # PostgreSQL
-      # ----------------------------------------
       - key: DATABASE_PROVIDER
         value: postgresql
-
       - key: DATABASE_CONNECTION_URI
         fromDatabase:
           name: evolution-db
           property: connectionString
-
       - key: DATABASE_SAVE_DATA_INSTANCE
         value: "true"
-
+      - key: DATABASE_SAVE_DATA_NEW_MESSAGE
+        value: "true"
+      - key: DATABASE_SAVE_MESSAGE_UPDATE
+        value: "true"
       - key: DATABASE_SAVE_DATA_CHATS
         value: "true"
-
       - key: DATABASE_SAVE_DATA_MESSAGES
         value: "true"
-
       - key: DATABASE_SAVE_DATA_CONTACTS
         value: "true"
-
       - key: DATABASE_SAVE_DATA_LABELS
         value: "true"
-
       - key: DATABASE_SAVE_DATA_HISTORIC
         value: "true"
 
-      # ----------------------------------------
       # Redis / Valkey
-      # ----------------------------------------
       - key: CACHE_REDIS_ENABLED
         value: "true"
-
       - key: CACHE_REDIS_URI
         fromService:
           type: keyvalue
           name: evolution-redis
           property: connectionString
-
       - key: CACHE_REDIS_PREFIX_KEY
         value: evolution-cache
-
       - key: CACHE_REDIS_TTL
         value: "604800"
-
       - key: CACHE_REDIS_SAVE_INSTANCES
         value: "true"
 
-      # ----------------------------------------
       # Local cache fallback
-      # ----------------------------------------
       - key: CACHE_LOCAL_ENABLED
         value: "true"
-
       - key: CACHE_LOCAL_TTL
         value: "86400"
 
-      # ----------------------------------------
-      # WhatsApp / Instance
-      # ----------------------------------------
+      # Instances
       - key: DEL_INSTANCE
         value: "false"
-
       - key: DEL_TEMP_INSTANCES
         value: "false"
 
-      # ----------------------------------------
       # Language
-      # ----------------------------------------
       - key: LANGUAGE
         value: en
-
 
 # ==========================================
 # PostgreSQL
